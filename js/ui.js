@@ -130,7 +130,10 @@ document.getElementById('history-list').addEventListener('click', e => {
       onConfirm: async () => {
         await storage.deleteOrder(id)
         if (orderToDelete.synced) {
-          try { await storage.deleteOrderFromCloud(orderToDelete.id) } catch(e) { /* non-critical */ }
+          try {
+            await storage.deleteOrderFromCloud(orderToDelete.id)
+            fetchGlobalStats()
+          } catch(e) { /* non-critical */ }
         }
         state.orders = await storage.getOrders()
         renderHistoryTab()
