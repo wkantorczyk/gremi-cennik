@@ -164,6 +164,11 @@ td { padding: 10px 12px; border-top: 1px solid #f0f0f0; font-size: 14px; }
 #onboarding input { width:100%; padding:14px; border:2px solid #e0e0e0;
                     border-radius:10px; font-size:18px; margin-bottom:16px; }
 #onboarding input:focus { border-color:#f57c00; outline:none; }
+.onboarding-lang { display:flex; gap:10px; margin-bottom:16px; }
+.onboarding-lang-btn { flex:1; padding:10px; border:2px solid #e0e0e0;
+                       border-radius:10px; background:#fff; font-size:15px;
+                       cursor:pointer; transition:border-color .15s, background .15s; }
+.onboarding-lang-btn.active { border-color:#f57c00; background:#fff3e0; font-weight:700; }
 #onboarding button { width:100%; padding:16px; background:#f57c00; color:#fff;
                      border:none; border-radius:10px; font-size:18px;
                      font-weight:700; cursor:pointer; }

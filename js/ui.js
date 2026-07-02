@@ -460,6 +460,23 @@ function setupOnboarding() {
   const inp = document.getElementById('onboarding-input')
   const btn = document.getElementById('onboarding-btn')
 
+  function updateLangButtons() {
+    onboarding.querySelectorAll('.onboarding-lang-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === state.settings.lang)
+    })
+  }
+
+  onboarding.querySelectorAll('.onboarding-lang-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      state.settings.lang = b.dataset.lang
+      await storage.saveSettings(state.settings)
+      applyTranslations()
+      updateLangButtons()
+    })
+  })
+
+  updateLangButtons()
+
   async function submit() {
     const name = inp.value.trim()
     if (!name) { inp.focus(); return }
