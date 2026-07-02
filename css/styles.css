@@ -171,9 +171,9 @@ td { padding: 10px 12px; border-top: 1px solid #f0f0f0; font-size: 14px; }
                        font-size:13px; cursor:pointer; transition:border-color .15s; }
 .onboarding-lang-btn.active { border-color:#1a1a1a; font-weight:700; }
 .lang-flag { font-size:28px; line-height:1; }
-#onboarding button { width:100%; padding:16px; background:#f57c00; color:#fff;
-                     border:none; border-radius:10px; font-size:18px;
-                     font-weight:700; cursor:pointer; }
+#onboarding-btn { width:100%; padding:16px; background:#f57c00; color:#fff;
+                  border:none; border-radius:10px; font-size:18px;
+                  font-weight:700; cursor:pointer; }
 
 /* High contrast mode */
 body.high-contrast { background:#fff; color:#000; }
