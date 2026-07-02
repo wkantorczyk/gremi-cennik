@@ -68,14 +68,22 @@ async function fetchGlobalStats() {
   renderGlobalStatsUI()
   try {
     const res = await fetchWithTimeout(
-      `${SUPABASE_URL}/rest/v1/orders?select=count(),total.sum()`,
-      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+      `${SUPABASE_URL}/rest/v1/rpc/get_global_stats`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      }
     )
     if (!res.ok) throw new Error(res.statusText)
     const rows = await res.json()
     const row = rows[0] || {}
-    state.globalStats.customers = Number(row.count) || 0
-    state.globalStats.revenue = Number(row.sum) || 0
+    state.globalStats.customers = Number(row.order_count) || 0
+    state.globalStats.revenue = Number(row.total_sum) || 0
     state.globalStats.status = 'ok'
   } catch(e) {
     state.globalStats.status = 'error'
