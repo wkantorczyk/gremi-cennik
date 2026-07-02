@@ -412,6 +412,15 @@ function renderSettingsTab() {
   panel.querySelector('#btn-sync-now').addEventListener('click', () => syncNow())
 }
 
+function updateOfflineBanner() {
+  const banner = document.getElementById('offline-banner')
+  if (!banner) return
+  const offline = !navigator.onLine
+  banner.classList.toggle('visible', offline)
+  document.body.classList.toggle('offline', offline)
+  banner.textContent = offline ? t('offline_banner') : ''
+}
+
 function applyHighContrast() {
   if (state.settings.highContrast) {
     document.body.classList.add('high-contrast')
@@ -483,6 +492,7 @@ async function init() {
 
     applyTranslations()
     applyHighContrast()
+    updateOfflineBanner()
 
     if (!state.settings.sellerId) {
       setupOnboarding()
@@ -512,4 +522,6 @@ async function init() {
   }
 }
 
+window.addEventListener('online', updateOfflineBanner)
+window.addEventListener('offline', updateOfflineBanner)
 document.addEventListener('DOMContentLoaded', init)

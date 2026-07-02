@@ -2,6 +2,13 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; }
 
+/* Offline banner */
+#offline-banner { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 150;
+                  background: #f57c00; color: #fff; text-align: center;
+                  font-size: 13px; font-weight: 600; padding: 10px 16px; }
+#offline-banner.visible { display: block; }
+body.offline #tab-content { padding-top: 40px; }
+
 /* Tab bar — fixed bottom */
 #tab-bar { position: fixed; bottom: 0; left: 0; right: 0;
            height: calc(56px + env(safe-area-inset-bottom));
