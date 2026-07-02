@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Gremi-Cennik</title>
+  <style>
+    /* Reset + base */
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; }
+
+    /* Tab bar — fixed bottom */
+    #tab-bar { position: fixed; bottom: 0; left: 0; right: 0;
+               height: calc(56px + env(safe-area-inset-bottom));
+               padding-bottom: env(safe-area-inset-bottom); z-index: 100;
+               background: #fff; border-top: 1px solid #e0e0e0;
+               display: flex; }
+    #tab-bar button { flex: 1; border: none; background: none; font-size: 10px;
+                      padding: 6px 0; cursor: pointer; color: #888;
+                      display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    #tab-bar button.active { color: #d32f2f; }
+    #tab-bar button .tab-icon { font-size: 20px; }
+
+    /* SUMA bar — fixed above tab bar, only shown on Zamówienie tab */
+    #suma-bar { position: fixed; bottom: calc(56px + env(safe-area-inset-bottom));
+                left: 0; right: 0; height: 56px; z-index: 99;
+                background: #1a3a1a; color: #fff;
+                display: flex; align-items: center;
+                padding: 0 12px; gap: 12px; }
+    #suma-bar.hidden { display: none; }
+    #suma-bar #btn-wydano { flex-shrink: 0; width: auto; padding: 10px 18px;
+                            font-size: 15px; font-weight: 700; letter-spacing: 1px;
+                            background: #d32f2f; color: #fff; border: none;
+                            border-radius: 10px; cursor: pointer; }
+    #suma-bar #btn-wydano:active { background: #b71c1c; }
+    #suma-bar .suma-right { flex: 1; display: flex; align-items: baseline;
+                            justify-content: flex-end; gap: 8px; }
+    #suma-bar .suma-label { font-size: 13px; opacity: 0.75; }
+    #suma-bar .suma-value { font-size: 34px; font-weight: 700;
+                            font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+
+    /* Content area — scrollable, padded for fixed bars */
+    #tab-content { padding-bottom: calc(56px + 56px + env(safe-area-inset-bottom) + 8px); }
+
+    /* Tab panels */
+    .tab-panel { display: none; padding: 16px; }
+    .tab-panel.active { display: block; }
+
+    /* Product row */
+    .product-row { background: #fff; border-radius: 10px; margin-bottom: 8px;
+                   padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+                   box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .product-info { flex: 1; }
+    .product-name { font-size: 15px; font-weight: 500; }
+    .product-price { font-size: 13px; color: #888; margin-top: 2px; }
+    .qty-controls { display: flex; align-items: center; gap: 8px; }
+    .qty-btn { width: 44px; height: 44px; border-radius: 22px; border: 2px solid #d32f2f;
+               background: #fff; color: #d32f2f; font-size: 22px; font-weight: 700;
+               display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .qty-btn:active { background: #d32f2f; color: #fff; }
+    .qty-value { font-size: 20px; font-weight: 700; min-width: 32px; text-align: center; }
+    .qty-value.nonzero { color: #d32f2f; }
+
+    /* WYDANO button — lives inside #suma-bar, styled there */
+
+    /* History */
+    .order-row { background: #fff; border-radius: 10px; margin-bottom: 8px;
+                 padding: 14px 16px; display: flex; align-items: center;
+                 box-shadow: 0 1px 3px rgba(0,0,0,.08); cursor: pointer; }
+    .order-row:active { background: #f5f5f5; }
+    .order-info { flex: 1; }
+    .order-title { font-size: 15px; font-weight: 600; }
+    .order-time { font-size: 12px; color: #888; margin-top: 2px; }
+    .order-total { font-size: 16px; font-weight: 700; color: #d32f2f; margin-right: 12px; }
+    .order-delete { width: 36px; height: 36px; border-radius: 18px; border: none;
+                    background: #ffebee; color: #d32f2f; font-size: 18px;
+                    display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+    /* Stats */
+    .stat-card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 12px;
+                 box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .stat-value { font-size: 32px; font-weight: 700; color: #d32f2f; }
+    .stat-label { font-size: 13px; color: #888; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px;
+            overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    th { background: #f5f5f5; padding: 10px 12px; text-align: left; font-size: 12px;
+         color: #666; font-weight: 600; }
+    td { padding: 10px 12px; border-top: 1px solid #f0f0f0; font-size: 14px; }
+
+    /* Config */
+    .config-row { background: #fff; border-radius: 10px; margin-bottom: 8px;
+                  padding: 14px 16px; display: flex; align-items: center;
+                  box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .config-name { flex: 1; font-size: 15px; }
+    .price-display { font-size: 16px; font-weight: 700; color: #333; margin-right: 8px;
+                     font-variant-numeric: tabular-nums; }
+    .btn-edit-price { padding: 8px 14px; background: #fff3e0; border: 1px solid #ff9800;
+                      border-radius: 8px; color: #e65100; font-size: 13px; cursor: pointer; }
+    #btn-add-product { width: 100%; padding: 16px; background: #e8f5e9; border: 2px dashed #4caf50;
+                       border-radius: 12px; font-size: 16px; color: #2e7d32;
+                       cursor: pointer; margin-top: 8px; }
+
+    /* Settings */
+    .setting-row { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 10px;
+                   box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .setting-label { font-size: 13px; color: #666; margin-bottom: 8px; }
+    .setting-input { width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0;
+                     border-radius: 8px; font-size: 16px; }
+    .lang-toggle { display: flex; gap: 8px; }
+    .lang-btn { flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;
+                background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .lang-btn.active { border-color: #d32f2f; background: #ffebee; color: #d32f2f; }
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; }
+    .toggle-switch { width: 48px; height: 28px; background: #ccc; border-radius: 14px;
+                     position: relative; cursor: pointer; border: none;
+                     transition: background .2s; }
+    .toggle-switch.on { background: #d32f2f; }
+    .toggle-switch::after { content:''; position:absolute; width:22px; height:22px;
+                            background:#fff; border-radius:11px; top:3px; left:3px;
+                            transition: left .2s; }
+    .toggle-switch.on::after { left: 23px; }
+    .sync-status { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .sync-icon { font-size: 18px; }
+    #btn-sync-now { width:100%; padding:12px; background:#e3f2fd; border:1px solid #1976d2;
+                    border-radius:8px; color:#1565c0; font-size:15px; cursor:pointer; margin-top:8px; }
+
+    /* Modal backdrop */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200;
+                      display:flex; align-items:flex-end; justify-content:center; }
+    .modal-backdrop.center { align-items:center; }
+    .modal { background:#fff; border-radius:16px 16px 0 0; padding:24px; width:100%; max-width:480px;
+             max-height:80vh; overflow-y:auto; }
+    .modal-center { border-radius:16px; padding:24px; width:calc(100% - 32px); max-width:400px; }
+    .modal h3 { font-size:18px; font-weight:700; margin-bottom:16px; }
+    .modal-items { margin-bottom:16px; }
+    .modal-item { display:flex; justify-content:space-between; padding:8px 0;
+                  border-bottom:1px solid #f0f0f0; font-size:15px; }
+    .modal-total { display:flex; justify-content:space-between; font-size:18px;
+                   font-weight:700; padding-top:12px; color:#d32f2f; }
+    .modal-actions { display:flex; gap:12px; margin-top:16px; }
+    .modal-actions button { flex:1; padding:14px; border-radius:10px; border:none;
+                            font-size:16px; font-weight:600; cursor:pointer; }
+    .btn-modal-cancel { background:#f5f5f5; color:#333; }
+    .btn-modal-confirm { background:#d32f2f; color:#fff; }
+    .modal-field { margin-bottom:14px; }
+    .modal-field label { display:block; font-size:13px; color:#666; margin-bottom:6px; }
+    .modal-field input { width:100%; padding:12px; border:1px solid #e0e0e0;
+                         border-radius:8px; font-size:16px; }
+    .modal-field .error { color:#d32f2f; font-size:12px; margin-top:4px; }
+
+    /* Toast */
+    #toast { position:fixed; bottom:calc(56px + 56px + env(safe-area-inset-bottom) + 16px);
+             left:50%; transform:translateX(-50%) translateY(20px);
+             background:#333; color:#fff; padding:12px 20px; border-radius:24px;
+             font-size:14px; opacity:0; transition:opacity .3s, transform .3s;
+             pointer-events:none; z-index:300; white-space:nowrap; }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* Onboarding modal */
+    #onboarding { position:fixed; inset:0; background:#d32f2f; z-index:500;
+                  display:flex; align-items:center; justify-content:center; padding:24px; }
+    #onboarding .card { background:#fff; border-radius:16px; padding:32px 24px; width:100%; max-width:360px; }
+    #onboarding h1 { font-size:22px; font-weight:700; margin-bottom:8px; }
+    #onboarding p { color:#666; margin-bottom:20px; font-size:15px; }
+    #onboarding input { width:100%; padding:14px; border:2px solid #e0e0e0;
+                        border-radius:10px; font-size:18px; margin-bottom:16px; }
+    #onboarding input:focus { border-color:#d32f2f; outline:none; }
+    #onboarding button { width:100%; padding:16px; background:#d32f2f; color:#fff;
+                         border:none; border-radius:10px; font-size:18px;
+                         font-weight:700; cursor:pointer; }
+
+    /* High contrast mode */
+    body.high-contrast { background:#fff; color:#000; }
+    body.high-contrast #suma-bar { background:#000; color:#fff; }
+    body.high-contrast #suma-bar .suma-value { font-size:40px; }
+    body.high-contrast .product-row,
+    body.high-contrast .order-row,
+    body.high-contrast .config-row,
+    body.high-contrast .setting-row,
+    body.high-contrast .stat-card { border:2px solid #000; }
+    body.high-contrast .qty-btn { border-color:#000; color:#000; }
+    body.high-contrast .qty-btn:active { background:#000; color:#fff; }
+    body.high-contrast #suma-bar #btn-wydano { background:#000; }
+
+    /* Empty state */
+    .empty-state { text-align:center; padding:48px 16px; color:#999; font-size:16px; }
+
+    /* Stats table heading */
+    .stats-heading { font-size:15px; font-weight:700; margin-bottom:8px; color:#333; }
+
+    /* Stats sections */
+    .stats-section-label { font-size:12px; font-weight:700; text-transform:uppercase;
+                           letter-spacing:0.8px; color:#999; margin:16px 0 8px; }
+    .stats-divider { border:none; border-top:2px solid #e0e0e0; margin:20px 0 4px; }
+    .stats-global-note { text-align:center; font-size:13px; color:#bbb; padding:6px 0; }
+    .stats-disclaimer { font-size:12px; color:#bbb; margin-top:12px; line-height:1.5; }
+  </style>
+</head>
+<body>
+
+  <!-- Onboarding -->
+  <div id="onboarding">
+    <div class="card">
+      <h1 data-i18n="onboarding_title"></h1>
+      <p data-i18n="onboarding_prompt"></p>
+      <input id="onboarding-input" type="text" autocomplete="off">
+      <button id="onboarding-btn" data-i18n="onboarding_btn"></button>
+    </div>
+  </div>
+
+  <!-- SUMA bar (above tab bar, order tab only) -->
+  <div id="suma-bar" class="hidden">
+    <button id="btn-wydano" data-i18n="btn_wydano"></button>
+    <div class="suma-right">
+      <span class="suma-label" data-i18n="label_suma"></span>
+      <span id="suma-value" class="suma-value">0,00 zł</span>
+    </div>
+  </div>
+
+  <!-- Tab content -->
+  <div id="tab-content">
+    <div id="panel-order" class="tab-panel active">
+      <div id="product-list"></div>
+    </div>
+    <div id="panel-history" class="tab-panel">
+      <div id="history-list"></div>
+    </div>
+    <div id="panel-stats" class="tab-panel">
+      <div class="stats-section-label" data-i18n="label_my_stats"></div>
+      <div class="stat-card">
+        <div id="stat-customers" class="stat-value">0</div>
+        <div class="stat-label" data-i18n="label_customers"></div>
+      </div>
+      <div class="stat-card">
+        <div id="stat-revenue" class="stat-value">0,00 zł</div>
+        <div class="stat-label" data-i18n="label_revenue"></div>
+      </div>
+      <div id="stats-table-wrap"></div>
+      <hr class="stats-divider">
+      <div class="stats-section-label" data-i18n="label_global_stats"></div>
+      <div class="stat-card">
+        <div id="stat-global-customers" class="stat-value">—</div>
+        <div class="stat-label" data-i18n="label_global_customers"></div>
+      </div>
+      <div class="stat-card">
+        <div id="stat-global-revenue" class="stat-value">—</div>
+        <div class="stat-label" data-i18n="label_global_revenue"></div>
+      </div>
+      <div id="stats-global-note" class="stats-global-note"></div>
+      <p class="stats-disclaimer" data-i18n="global_stats_disclaimer"></p>
+    </div>
+    <div id="panel-config" class="tab-panel">
+      <div id="config-list"></div>
+      <button id="btn-add-product" data-i18n="btn_add_product"></button>
+    </div>
+    <div id="panel-settings" class="tab-panel">
+      <!-- Rendered dynamically -->
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <nav id="tab-bar">
+    <button data-tab="order" class="active">
+      <span class="tab-icon">🛒</span>
+      <span data-i18n="tab_order"></span>
+    </button>
+    <button data-tab="history">
+      <span class="tab-icon">📋</span>
+      <span data-i18n="tab_history"></span>
+    </button>
+    <button data-tab="stats">
+      <span class="tab-icon">📊</span>
+      <span data-i18n="tab_stats"></span>
+    </button>
+    <button data-tab="config">
+      <span class="tab-icon">⚙️</span>
+      <span data-i18n="tab_config"></span>
+    </button>
+    <button data-tab="settings">
+      <span class="tab-icon">👤</span>
+      <span data-i18n="tab_settings"></span>
+    </button>
+  </nav>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+  /* === LAYER: Config === */
+  const SUPABASE_URL = ''
+  const SUPABASE_ANON_KEY = ''
+
+  /* === LAYER: i18n === */
+  const TRANSLATIONS = {
+    pl: {
+      tab_order: 'Zamówienie', tab_history: 'Historia', tab_stats: 'Statystyki',
+      tab_config: 'Konfiguracja', tab_settings: 'Ustawienia',
+      btn_wydano: 'WYDANO', btn_add_product: 'Dodaj produkt',
+      btn_confirm: 'Potwierdź', btn_cancel: 'Anuluj',
+      confirm_wydano: 'Potwierdzasz zamówienie?',
+      confirm_price: 'Zmienić cenę {name} z {old} zł na {new} zł?',
+      confirm_delete_order: 'Usunąć zamówienie #{n} ({total} zł)?',
+      label_total: 'Razem', label_suma: 'SUMA',
+      label_customers: 'Liczba klientów', label_revenue: 'Łączna suma',
+      label_ranking: 'Ranking produktów',
+      col_product: 'Produkt', col_sold: 'Sprzedano (szt.)', col_revenue: 'Przychód (zł)',
+      label_seller_name: 'Imię sprzedawcy', label_language: 'Język',
+      label_high_contrast: 'Tryb wysokiego kontrastu',
+      label_sort_popular: 'Sortuj po najpopularniejszych',
+      label_sync_status: 'Status synchronizacji', label_last_sync: 'Ostatni sync',
+      btn_sync_now: 'Synchronizuj teraz', sync_never: 'Nigdy',
+      label_price: 'Cena (zł)', label_name: 'Nazwa',
+      order_prefix: 'ZAMÓWIENIE',
+      no_orders: 'Brak zamówień', no_data: 'Brak danych',
+      toast_saved: 'Zapisano!', toast_empty: 'Dodaj co najmniej 1 produkt',
+      toast_sync_error: 'Brak połączenia — dane zapisane lokalnie',
+      error_storage: 'Błąd zapisu danych — sprawdź pamięć urządzenia',
+      error_name_required: 'Wpisz nazwę produktu',
+      error_price_invalid: 'Cena musi być większa od 0',
+      onboarding_title: 'Witaj w Gremi-Cennik',
+      onboarding_prompt: 'Podaj swoje imię, aby zacząć',
+      onboarding_placeholder: 'Twoje imię',
+      onboarding_btn: 'Rozpocznij',
+      sync_ok: 'Zsynchronizowano', sync_error: 'Błąd sync',
+      order_details_title: 'Szczegóły zamówienia',
+      label_my_stats: 'Twoje statystyki',
+      label_global_stats: 'Globalne statystyki',
+      label_global_customers: 'Łączna liczba klientów (wszyscy)',
+      label_global_revenue: 'Łączna suma (wszyscy)',
+      global_stats_loading: 'Pobieranie...',
+      global_stats_no_config: 'Wymaga konfiguracji bazy danych',
+      global_stats_error: 'Błąd pobierania danych globalnych',
+      global_stats_disclaimer: '* Globalne statystyki są szacunkowe. Dane mogą być niepełne — sprzedawcy mogą pominąć lub błędnie wprowadzić zamówienia.',
+    },
+    uk: {
+      tab_order: 'Замовлення', tab_history: 'Історія', tab_stats: 'Статистика',
+      tab_config: 'Конфігурація', tab_settings: 'Налаштування',
+      btn_wydano: 'ВИДАНО', btn_add_product: 'Додати товар',
+      btn_confirm: 'Підтвердити', btn_cancel: 'Скасувати',
+      confirm_wydano: 'Підтверджуєте замовлення?',
+      confirm_price: 'Змінити ціну {name} з {old} зл на {new} зл?',
+      confirm_delete_order: 'Видалити замовлення #{n} ({total} зл)?',
+      label_total: 'Разом', label_suma: 'СУМА',
+      label_customers: 'Кількість клієнтів', label_revenue: 'Загальна сума',
+      label_ranking: 'Рейтинг товарів',
+      col_product: 'Товар', col_sold: 'Продано (шт.)', col_revenue: 'Виручка (зл)',
+      label_seller_name: 'Ім\'я продавця', label_language: 'Мова',
+      label_high_contrast: 'Режим високої контрастності',
+      label_sort_popular: 'Сортувати за популярністю',
+      label_sync_status: 'Статус синхронізації', label_last_sync: 'Остання синхронізація',
+      btn_sync_now: 'Синхронізувати', sync_never: 'Ніколи',
+      label_price: 'Ціна (зл)', label_name: 'Назва',
+      order_prefix: 'ЗАМОВЛЕННЯ',
+      no_orders: 'Немає замовлень', no_data: 'Немає даних',
+      toast_saved: 'Збережено!', toast_empty: 'Додайте хоча б 1 товар',
+      toast_sync_error: 'Немає зв\'язку — дані збережено локально',
+      error_storage: 'Помилка запису — перевірте пам\'ять пристрою',
+      error_name_required: 'Введіть назву товару',
+      error_price_invalid: 'Ціна має бути більшою за 0',
+      onboarding_title: 'Ласкаво просимо до Gremi-Cennik',
+      onboarding_prompt: 'Введіть ваше ім\'я, щоб почати',
+      onboarding_placeholder: 'Ваше ім\'я',
+      onboarding_btn: 'Розпочати',
+      sync_ok: 'Синхронізовано', sync_error: 'Помилка синхронізації',
+      order_details_title: 'Деталі замовлення',
+      label_my_stats: 'Ваша статистика',
+      label_global_stats: 'Глобальна статистика',
+      label_global_customers: 'Загальна кількість клієнтів (усі)',
+      label_global_revenue: 'Загальна сума (усі)',
+      global_stats_loading: 'Завантаження...',
+      global_stats_no_config: 'Потрібна конфігурація бази даних',
+      global_stats_error: 'Помилка завантаження глобальних даних',
+      global_stats_disclaimer: '* Глобальна статистика є приблизною. Дані можуть бути неповними — продавці можуть пропустити або неправильно ввести замовлення.',
+    }
+  }
+
+  function t(key, vars) {
+    const lang = state && state.settings && state.settings.lang ? state.settings.lang : 'pl'
+    let str = (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || (TRANSLATIONS['pl'][key]) || key
+    if (vars) {
+      for (const [k, v] of Object.entries(vars)) {
+        str = str.replace('{' + k + '}', v)
+      }
+    }
+    return str
+  }
+
+  function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n')
+      el.textContent = t(key)
+    })
+    const lang = state.settings.lang || 'pl'
+    document.documentElement.lang = lang
+    const inp = document.getElementById('onboarding-input')
+    if (inp) inp.placeholder = t('onboarding_placeholder')
+  }
+
+  /* === LAYER: Storage Gateway === */
+  function fetchWithTimeout(url, options, ms = 15000) {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), ms)
+    return fetch(url, { ...options, signal: ctrl.signal })
+      .finally(() => clearTimeout(timer))
+  }
+
+  const KEYS = {
+    orders: 'gremi_orders',
+    catalog: 'gremi_catalog',
+    settings: 'gremi_settings'
+  }
+
+  function trySet(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)) }
+    catch(e) { showToast(t('error_storage')); throw e }
+  }
+
+  function tryGet(key) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null }
+    catch(e) { return null }
+  }
+
+  const storage = {
+    async saveOrder(order) {
+      const orders = await this.getOrders()
+      orders.unshift(order)
+      trySet(KEYS.orders, orders)
+    },
+    async getOrders() {
+      return tryGet(KEYS.orders) || []
+    },
+    async deleteOrder(id) {
+      const orders = await this.getOrders()
+      trySet(KEYS.orders, orders.filter(o => o.id !== id))
+    },
+    async getProducts() {
+      return tryGet(KEYS.catalog) || []
+    },
+    async saveProducts(products) {
+      trySet(KEYS.catalog, products)
+    },
+    async getSettings() {
+      return tryGet(KEYS.settings) || {}
+    },
+    async saveSettings(settings) {
+      trySet(KEYS.settings, settings)
+    },
+    async getUnsyncedOrders() {
+      const orders = await this.getOrders()
+      return orders.filter(o => !o.synced)
+    },
+    async markSynced(ids) {
+      const orders = await this.getOrders()
+      const idSet = new Set(ids)
+      orders.forEach(o => { if (idSet.has(o.id)) o.synced = true })
+      trySet(KEYS.orders, orders)
+    },
+    async pushOrdersToCloud(orders) {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(orders.map(o => ({
+          id: o.id, seller_id: o.sellerId, seller_name: o.sellerName,
+          items: o.items, total: o.total, timestamp: o.timestamp
+        })))
+      })
+      if (!res.ok) throw new Error(res.statusText)
+    },
+    async deleteOrderFromCloud(id) {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders?id=eq.${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      })
+      if (!res.ok) throw new Error(res.statusText)
+    },
+    async pushProductsToCloud(products) {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/products`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=ignore-duplicates,return=minimal'
+        },
+        body: JSON.stringify(products.map(p => ({
+          id: p.id, name_pl: p.namePL, name_uk: p.nameUA
+        })))
+      })
+      if (!res.ok) throw new Error(res.statusText)
+    }
+  }
+
+  /* === LAYER: Sync === */
+  let syncStatus = 'idle' // 'idle' | 'syncing' | 'ok' | 'error'
+  let _syncing = false
+
+  function updateSyncStatus(status) {
+    syncStatus = status
+    renderSyncStatusUI()
+  }
+
+  function renderSyncStatusUI() {
+    const el = document.getElementById('sync-status-display')
+    if (!el) return
+    const icons = { ok: '🟢', error: '🔴', syncing: '⏳', idle: '⚪' }
+    const icon = icons[syncStatus] || '⚪'
+    const lastSync = state.settings.lastSync
+    let timeStr = t('sync_never')
+    if (lastSync) {
+      const d = new Date(lastSync)
+      timeStr = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0')
+    }
+    el.innerHTML = `<span class="sync-icon">${icon}</span><span>${t('label_last_sync')}: ${timeStr}</span>`
+  }
+
+  async function syncNow() {
+    if (_syncing) return
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
+    _syncing = true
+    updateSyncStatus('syncing')
+    try {
+      const unsynced = await storage.getUnsyncedOrders()
+      if (unsynced.length > 0) {
+        await storage.pushOrdersToCloud(unsynced)
+        await storage.markSynced(unsynced.map(o => o.id))
+        state.orders = await storage.getOrders()
+      }
+      const products = await storage.getProducts()
+      await storage.pushProductsToCloud(products)
+      state.settings.lastSync = Date.now()
+      await storage.saveSettings(state.settings)
+      updateSyncStatus('ok')
+    } catch(e) {
+      updateSyncStatus('error')
+      showToast(t('toast_sync_error'))
+    } finally {
+      _syncing = false
+    }
+    fetchGlobalStats()
+  }
+
+  async function fetchGlobalStats() {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      state.globalStats.status = 'no_config'
+      renderGlobalStatsUI()
+      return
+    }
+    state.globalStats.status = 'loading'
+    renderGlobalStatsUI()
+    try {
+      const res = await fetchWithTimeout(
+        `${SUPABASE_URL}/rest/v1/orders?select=total`,
+        { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+      )
+      if (!res.ok) throw new Error(res.statusText)
+      const rows = await res.json()
+      state.globalStats.customers = rows.length
+      state.globalStats.revenue = rows.reduce((s, r) => s + (r.total || 0), 0)
+      state.globalStats.status = 'ok'
+    } catch(e) {
+      state.globalStats.status = 'error'
+    }
+    renderGlobalStatsUI()
+  }
+
+  function renderGlobalStatsUI() {
+    const elC = document.getElementById('stat-global-customers')
+    const elR = document.getElementById('stat-global-revenue')
+    const elN = document.getElementById('stats-global-note')
+    if (!elC) return
+    const { customers, revenue, status } = state.globalStats
+    if (status === 'ok') {
+      elC.textContent = customers
+      elR.textContent = formatMoney(revenue)
+      elN.textContent = ''
+    } else {
+      elC.textContent = '—'
+      elR.textContent = '—'
+      const noteKeys = { loading: 'global_stats_loading', no_config: 'global_stats_no_config', error: 'global_stats_error', idle: '' }
+      elN.textContent = noteKeys[status] ? t(noteKeys[status]) : ''
+    }
+  }
+
+  /* === LAYER: Domain === */
+  const DEFAULT_PRODUCTS = [
+    { id:'barszcz_330',       namePL:'Barszcz (330 ml)',                              nameUA:'Борщ (330 мл)',                         price:24 },
+    { id:'barszcz_wynos',     namePL:'Barszcz na wynos (500 ml)',                     nameUA:'Борщ на винос (500 мл)',               price:24 },
+    { id:'kanapka_slonina',   namePL:'Kanapka ze słoniną (1 szt.)',                   nameUA:'Бутерброд із салом (1 шт.)',           price:6  },
+    { id:'pampucha',          namePL:'Pampucha z czosnkiem (1 szt.)',                 nameUA:'Пампуха з часником (1 шт.)',          price:6  },
+    { id:'pierogi_ziemn',     namePL:'Pierogi z ziemniakami (3 szt./porcja)',         nameUA:'Вареники з картоплею (3 шт./порц.)', price:22 },
+    { id:'pierogi_twarog',    namePL:'Pierogi z twarogiem na słodko (3 szt./porcja)', nameUA:'Вареники з сиром (3 шт./порц.)',     price:22 },
+    { id:'nalesniki_kurczak', namePL:'Naleśniki z pieczarką i kurczakiem',            nameUA:'Млинці з грибами та куркою',          price:15 },
+    { id:'nalesniki_twarog',  namePL:'Naleśniki z twarogiem na słodko',               nameUA:'Млинці з сиром',                      price:15 },
+    { id:'kielbasa',          namePL:'Kiełbasa wieprzowa (1 szt.)',                   nameUA:'Ковбаса свиняча (1 шт.)',             price:25 },
+    { id:'slonina',           namePL:'Słonina pakowana (za 100 g)',                   nameUA:'Сало фасоване (100 г)',               price:10 },
+    { id:'tort_waflowy',      namePL:'Tort waflowy (1 szt.)',                         nameUA:'Вафельний торт (1 шт.)',              price:10 },
+    { id:'orzeszki',          namePL:'Orzeszki ze słodzonym mlekiem (5 szt.)',        nameUA:'Горішки зі згущеним молоком (5 шт.)', price:12 },
+    { id:'kwas',              namePL:'Kwas / Żywczyk / Sok Tymbark (500 ml)',         nameUA:'Квас/Живчик/Тімбарк (500 мл)',        price:13 },
+    { id:'sok_maly',          namePL:'Sok Sadoczok / Sok CapriSun (200 ml)',          nameUA:'Сік Садочок / CapriSun (200 мл)',     price:8  },
+    { id:'pepsi',             namePL:'Pepsi (330 ml puszka)',                         nameUA:'Pepsi (330 мл банка)',                price:10 },
+    { id:'woda',              namePL:'Woda (500 ml gazowana/niegazowana)',             nameUA:'Вода (500 мл газ/негаз)',             price:6  },
+  ]
+
+  function genId() {
+    return (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).slice(2)
+  }
+
+  function pName(p) {
+    return (state.settings.lang === 'uk' && p.nameUA) ? p.nameUA : p.namePL
+  }
+
+  function formatMoney(n) {
+    return n.toFixed(2).replace('.', ',') + ' zł'
+  }
+
+  function formatMoneyRaw(n) {
+    return n.toFixed(2).replace('.', ',')
+  }
+
+  function formatTimestamp(ts) {
+    const d = new Date(ts)
+    const date = d.getDate().toString().padStart(2,'0') + '.' +
+                 (d.getMonth()+1).toString().padStart(2,'0') + '.' + d.getFullYear()
+    const time = d.getHours().toString().padStart(2,'0') + ':' +
+                 d.getMinutes().toString().padStart(2,'0')
+    return date + ' ' + time
+  }
+
+  function getSortedProducts() {
+    if (!state.settings.sortByPopularity) return state.products
+    const counts = {}
+    for (const order of state.orders) {
+      for (const item of order.items) {
+        counts[item.productId] = (counts[item.productId] || 0) + item.qty
+      }
+    }
+    return [...state.products].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0))
+  }
+
+  /* === LAYER: UI === */
+  const state = {
+    cart: {},
+    products: [],
+    orders: [],
+    settings: {},
+    currentTab: 'order',
+    globalStats: { customers: null, revenue: null, status: 'idle' }
+  }
+
+  // Toast
+  let toastTimer
+  function showToast(msg) {
+    const el = document.getElementById('toast')
+    el.textContent = msg
+    el.classList.add('show')
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2500)
+  }
+
+  // Confirm modal
+  function showConfirm(opts) {
+    // opts: { title, body (HTML), onConfirm, confirmText, cancelText, center }
+    const backdrop = document.createElement('div')
+    backdrop.className = 'modal-backdrop' + (opts.center ? ' center' : '')
+    const modalClass = opts.center ? 'modal modal-center' : 'modal'
+    backdrop.innerHTML = `
+      <div class="${modalClass}">
+        <h3>${opts.title}</h3>
+        <div class="modal-items">${opts.body || ''}</div>
+        <div class="modal-actions">
+          <button class="btn-modal-cancel">${opts.cancelText || t('btn_cancel')}</button>
+          <button class="btn-modal-confirm">${opts.confirmText || t('btn_confirm')}</button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(backdrop)
+    backdrop.querySelector('.btn-modal-cancel').addEventListener('click', () => backdrop.remove())
+    backdrop.querySelector('.btn-modal-confirm').addEventListener('click', () => {
+      backdrop.remove()
+      if (opts.onConfirm) opts.onConfirm()
+    })
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove() })
+  }
+
+  // Render order tab products
+  function renderOrderTab() {
+    const list = document.getElementById('product-list')
+    const sorted = getSortedProducts()
+    if (sorted.length === 0) {
+      list.innerHTML = '<div class="empty-state">' + t('no_data') + '</div>'
+      return
+    }
+    list.innerHTML = sorted.map(p => {
+      const qty = state.cart[p.id] || 0
+      return `
+        <div class="product-row" data-product-id="${p.id}">
+          <div class="product-info">
+            <div class="product-name">${escHtml(pName(p))}</div>
+            <div class="product-price">${formatMoney(p.price)}</div>
+          </div>
+          <div class="qty-controls">
+            <button class="qty-btn" data-qty-btn data-id="${p.id}" data-dir="dec">−</button>
+            <span class="qty-value${qty > 0 ? ' nonzero' : ''}">${qty}</span>
+            <button class="qty-btn" data-qty-btn data-id="${p.id}" data-dir="inc">+</button>
+          </div>
+        </div>
+      `
+    }).join('')
+    renderSuma()
+  }
+
+  function renderSuma() {
+    let total = 0
+    for (const [id, qty] of Object.entries(state.cart)) {
+      const p = state.products.find(p => p.id === id)
+      if (p && qty > 0) total += p.price * qty
+    }
+    document.getElementById('suma-value').textContent = formatMoney(total)
+  }
+
+  // Product list event delegation
+  document.getElementById('product-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-qty-btn]')
+    if (!btn) return
+    const id = btn.dataset.id
+    const delta = btn.dataset.dir === 'inc' ? 1 : -1
+    state.cart[id] = Math.max(0, (state.cart[id] || 0) + delta)
+    const row = document.querySelector(`[data-product-id="${id}"]`)
+    if (row) {
+      const qv = row.querySelector('.qty-value')
+      qv.textContent = state.cart[id]
+      qv.className = 'qty-value' + (state.cart[id] > 0 ? ' nonzero' : '')
+    }
+    renderSuma()
+  })
+
+  // WYDANO button
+  document.getElementById('btn-wydano').addEventListener('click', () => {
+    const items = Object.entries(state.cart)
+      .filter(([id, qty]) => qty > 0)
+      .map(([id, qty]) => {
+        const p = state.products.find(p => p.id === id)
+        return p ? { productId: id, name: pName(p), price: p.price, qty } : null
+      })
+      .filter(Boolean)
+
+    if (items.length === 0) {
+      showToast(t('toast_empty'))
+      return
+    }
+
+    const total = items.reduce((s, i) => s + i.price * i.qty, 0)
+    const itemsHtml = items.map(i =>
+      `<div class="modal-item"><span>${escHtml(i.name)} ×${i.qty}</span><span>${formatMoney(i.price * i.qty)}</span></div>`
+    ).join('')
+    const totalHtml = `<div class="modal-total"><span>${t('label_total')}</span><span>${formatMoney(total)}</span></div>`
+
+    showConfirm({
+      title: t('confirm_wydano'),
+      body: itemsHtml + totalHtml,
+      confirmText: t('btn_confirm'),
+      cancelText: t('btn_cancel'),
+      onConfirm: async () => {
+        const order = {
+          id: genId(),
+          sellerId: state.settings.sellerId,
+          sellerName: state.settings.sellerName || '',
+          items,
+          total,
+          timestamp: Date.now(),
+          synced: false
+        }
+        await storage.saveOrder(order)
+        state.orders = await storage.getOrders()
+        state.cart = {}
+        renderOrderTab()
+        renderSuma()
+        showToast(t('toast_saved'))
+        syncNow()
+      }
+    })
+  })
+
+  // Render history tab
+  function renderHistoryTab() {
+    const list = document.getElementById('history-list')
+    if (state.orders.length === 0) {
+      list.innerHTML = '<div class="empty-state">' + t('no_orders') + '</div>'
+      return
+    }
+    list.innerHTML = state.orders.map((order, idx) => {
+      const num = state.orders.length - idx
+      return `
+        <div class="order-row" data-order-id="${order.id}">
+          <div class="order-info">
+            <div class="order-title">${t('order_prefix')} #${num}</div>
+            <div class="order-time">${formatTimestamp(order.timestamp)}</div>
+          </div>
+          <div class="order-total">${formatMoney(order.total)}</div>
+          <button class="order-delete" data-delete-order="${order.id}" title="Usuń">✕</button>
+        </div>
+      `
+    }).join('')
+  }
+
+  document.getElementById('history-list').addEventListener('click', e => {
+    const delBtn = e.target.closest('[data-delete-order]')
+    if (delBtn) {
+      e.stopPropagation()
+      const id = delBtn.dataset.deleteOrder
+      const orderIdx = state.orders.findIndex(o => o.id === id)
+      const num = state.orders.length - orderIdx
+      const orderToDelete = state.orders[orderIdx]
+      showConfirm({
+        title: t('confirm_delete_order', { n: num, total: formatMoneyRaw(orderToDelete.total) }),
+        body: '',
+        center: true,
+        onConfirm: async () => {
+          await storage.deleteOrder(id)
+          if (orderToDelete.synced) {
+            try { await storage.deleteOrderFromCloud(orderToDelete.id) } catch(e) { /* non-critical */ }
+          }
+          state.orders = await storage.getOrders()
+          renderHistoryTab()
+        }
+      })
+      return
+    }
+    const row = e.target.closest('[data-order-id]')
+    if (row) {
+      const id = row.dataset.orderId
+      const order = state.orders.find(o => o.id === id)
+      if (!order) return
+      const orderIdx = state.orders.findIndex(o => o.id === id)
+      const num = state.orders.length - orderIdx
+      const itemsHtml = order.items.map(i =>
+        `<div class="modal-item"><span>${escHtml(i.name)} ×${i.qty}</span><span>${formatMoney(i.price * i.qty)}</span></div>`
+      ).join('')
+      const totalHtml = `<div class="modal-total"><span>${t('label_total')}</span><span>${formatMoney(order.total)}</span></div>`
+      const timeHtml = `<div style="font-size:12px;color:#888;margin-bottom:8px">${formatTimestamp(order.timestamp)}</div>`
+
+      const backdrop = document.createElement('div')
+      backdrop.className = 'modal-backdrop'
+      backdrop.innerHTML = `
+        <div class="modal">
+          <h3>${t('order_details_title')} #${num}</h3>
+          ${timeHtml}
+          <div class="modal-items">${itemsHtml}${totalHtml}</div>
+          <div class="modal-actions">
+            <button class="btn-modal-cancel" style="flex:1">${t('btn_cancel')}</button>
+          </div>
+        </div>
+      `
+      document.body.appendChild(backdrop)
+      backdrop.querySelector('.btn-modal-cancel').addEventListener('click', () => backdrop.remove())
+      backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove() })
+    }
+  })
+
+  // Render stats tab
+  function renderStatsTab() {
+    document.getElementById('stat-customers').textContent = state.orders.length
+    const totalRevenue = state.orders.reduce((s, o) => s + o.total, 0)
+    document.getElementById('stat-revenue').textContent = formatMoney(totalRevenue)
+    renderGlobalStatsUI()
+
+    const wrap = document.getElementById('stats-table-wrap')
+    if (state.orders.length === 0) {
+      wrap.innerHTML = '<div class="empty-state">' + t('no_data') + '</div>'
+      return
+    }
+
+    // Build ranking
+    const productStats = {}
+    for (const order of state.orders) {
+      for (const item of order.items) {
+        if (!productStats[item.productId]) {
+          productStats[item.productId] = { name: item.name, qty: 0, revenue: 0 }
+        }
+        productStats[item.productId].qty += item.qty
+        productStats[item.productId].revenue += item.price * item.qty
+      }
+    }
+
+    // Update names from current catalog (in case language changed)
+    for (const [pid, stat] of Object.entries(productStats)) {
+      const p = state.products.find(p => p.id === pid)
+      if (p) stat.name = pName(p)
+    }
+
+    const ranked = Object.values(productStats).sort((a, b) => b.qty - a.qty)
+
+    wrap.innerHTML = `
+      <div class="stats-heading">${t('label_ranking')}</div>
+      <table>
+        <thead><tr>
+          <th>${t('col_product')}</th>
+          <th style="text-align:right">${t('col_sold')}</th>
+          <th style="text-align:right">${t('col_revenue')}</th>
+        </tr></thead>
+        <tbody>
+          ${ranked.map(s => `
+            <tr>
+              <td>${escHtml(s.name)}</td>
+              <td style="text-align:right">${s.qty}</td>
+              <td style="text-align:right">${formatMoney(s.revenue)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `
+  }
+
+  // Render config tab
+  function renderConfigTab() {
+    const list = document.getElementById('config-list')
+    list.innerHTML = state.products.map(p => `
+      <div class="config-row" data-config-product="${p.id}">
+        <div class="config-name">${escHtml(pName(p))}</div>
+        <span class="price-display">${formatMoney(p.price)}</span>
+        <button class="btn-edit-price" data-edit-price="${p.id}">${t('label_price').replace(' (zł)','')}</button>
+      </div>
+    `).join('')
+  }
+
+  document.getElementById('config-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-edit-price]')
+    if (!btn) return
+    const id = btn.dataset.editPrice
+    const p = state.products.find(p => p.id === id)
+    if (!p) return
+
+    const backdrop = document.createElement('div')
+    backdrop.className = 'modal-backdrop center'
+    backdrop.innerHTML = `
+      <div class="modal modal-center">
+        <h3>${escHtml(pName(p))}</h3>
+        <div class="modal-field">
+          <label>${t('label_price')}</label>
+          <input id="price-edit-input" type="number" min="0.01" step="0.01" value="${p.price}">
+          <div class="error" id="price-edit-error"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-modal-cancel">${t('btn_cancel')}</button>
+          <button class="btn-modal-confirm" id="price-edit-save">${t('btn_confirm')}</button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(backdrop)
+    const input = backdrop.querySelector('#price-edit-input')
+    input.focus()
+    input.select()
+
+    backdrop.querySelector('.btn-modal-cancel').addEventListener('click', () => backdrop.remove())
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove() })
+    backdrop.querySelector('#price-edit-save').addEventListener('click', () => {
+      const newPrice = parseFloat(input.value)
+      if (!newPrice || !isFinite(newPrice) || newPrice <= 0) {
+        backdrop.querySelector('#price-edit-error').textContent = t('error_price_invalid')
+        return
+      }
+      if (newPrice === p.price) { backdrop.remove(); return }
+      const oldPrice = p.price
+      backdrop.remove()
+      showConfirm({
+        title: t('confirm_price', { name: escHtml(pName(p)), old: formatMoneyRaw(oldPrice), new: formatMoneyRaw(newPrice) }),
+        body: '',
+        center: true,
+        onConfirm: async () => {
+          p.price = newPrice
+          await storage.saveProducts(state.products)
+          renderConfigTab()
+          syncNow()
+        }
+      })
+    })
+  })
+
+  document.getElementById('btn-add-product').addEventListener('click', () => {
+    const backdrop = document.createElement('div')
+    backdrop.className = 'modal-backdrop center'
+    backdrop.innerHTML = `
+      <div class="modal modal-center">
+        <h3>${t('btn_add_product')}</h3>
+        <div class="modal-field">
+          <label>${t('label_name')}</label>
+          <input id="new-product-name" type="text" autocomplete="off">
+          <div class="error" id="new-product-name-error"></div>
+        </div>
+        <div class="modal-field">
+          <label>${t('label_price')}</label>
+          <input id="new-product-price" type="number" min="0.01" step="0.01">
+          <div class="error" id="new-product-price-error"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-modal-cancel">${t('btn_cancel')}</button>
+          <button class="btn-modal-confirm" id="new-product-save">${t('btn_confirm')}</button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(backdrop)
+    const nameInput = backdrop.querySelector('#new-product-name')
+    nameInput.focus()
+
+    backdrop.querySelector('.btn-modal-cancel').addEventListener('click', () => backdrop.remove())
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove() })
+    backdrop.querySelector('#new-product-save').addEventListener('click', async () => {
+      const nameVal = nameInput.value.trim()
+      const priceVal = parseFloat(backdrop.querySelector('#new-product-price').value)
+      let valid = true
+      backdrop.querySelector('#new-product-name-error').textContent = ''
+      backdrop.querySelector('#new-product-price-error').textContent = ''
+      if (!nameVal) {
+        backdrop.querySelector('#new-product-name-error').textContent = t('error_name_required')
+        valid = false
+      }
+      if (!priceVal || !isFinite(priceVal) || priceVal <= 0) {
+        backdrop.querySelector('#new-product-price-error').textContent = t('error_price_invalid')
+        valid = false
+      }
+      if (!valid) return
+      const newProduct = {
+        id: genId(),
+        namePL: nameVal,
+        nameUA: nameVal,
+        price: priceVal
+      }
+      state.products.push(newProduct)
+      await storage.saveProducts(state.products)
+      backdrop.remove()
+      renderConfigTab()
+      showToast(t('toast_saved'))
+      syncNow()
+    })
+  })
+
+  // Render settings tab
+  function renderSettingsTab() {
+    const panel = document.getElementById('panel-settings')
+    const s = state.settings
+    panel.innerHTML = `
+      <div class="setting-row">
+        <div class="setting-label" data-i18n="label_seller_name">${t('label_seller_name')}</div>
+        <input class="setting-input" id="seller-name-input" type="text" value="${escAttr(s.sellerName || '')}" autocomplete="off">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label" data-i18n="label_language">${t('label_language')}</div>
+        <div class="lang-toggle">
+          <button class="lang-btn${s.lang !== 'uk' ? ' active' : ''}" data-lang="pl">PL</button>
+          <button class="lang-btn${s.lang === 'uk' ? ' active' : ''}" data-lang="uk">UA</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-row">
+          <span style="font-size:14px">${t('label_high_contrast')}</span>
+          <button class="toggle-switch${s.highContrast ? ' on' : ''}" id="toggle-high-contrast"></button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-row">
+          <span style="font-size:14px">${t('label_sort_popular')}</span>
+          <button class="toggle-switch${s.sortByPopularity ? ' on' : ''}" id="toggle-sort-popular"></button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">${t('label_sync_status')}</div>
+        <div class="sync-status" id="sync-status-display"></div>
+        <button id="btn-sync-now">${t('btn_sync_now')}</button>
+      </div>
+    `
+
+    renderSyncStatusUI()
+
+    panel.querySelector('#seller-name-input').addEventListener('change', async e => {
+      state.settings.sellerName = e.target.value.trim()
+      await storage.saveSettings(state.settings)
+    })
+
+    panel.querySelectorAll('[data-lang]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        state.settings.lang = btn.dataset.lang
+        await storage.saveSettings(state.settings)
+        applyTranslations()
+        renderSettingsTab()
+        renderOrderTab()
+        renderConfigTab()
+        renderHistoryTab()
+        renderStatsTab()
+      })
+    })
+
+    panel.querySelector('#toggle-high-contrast').addEventListener('click', async () => {
+      state.settings.highContrast = !state.settings.highContrast
+      await storage.saveSettings(state.settings)
+      applyHighContrast()
+      renderSettingsTab()
+    })
+
+    panel.querySelector('#toggle-sort-popular').addEventListener('click', async () => {
+      state.settings.sortByPopularity = !state.settings.sortByPopularity
+      await storage.saveSettings(state.settings)
+      renderSettingsTab()
+      if (state.currentTab === 'order') renderOrderTab()
+    })
+
+    panel.querySelector('#btn-sync-now').addEventListener('click', () => syncNow())
+  }
+
+  function applyHighContrast() {
+    if (state.settings.highContrast) {
+      document.body.classList.add('high-contrast')
+    } else {
+      document.body.classList.remove('high-contrast')
+    }
+  }
+
+  // Tab switching
+  function switchTab(tabId) {
+    state.currentTab = tabId
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'))
+    document.querySelectorAll('#tab-bar button').forEach(b => b.classList.remove('active'))
+    document.getElementById('panel-' + tabId).classList.add('active')
+    document.querySelector(`#tab-bar button[data-tab="${tabId}"]`).classList.add('active')
+
+    const sumaBar = document.getElementById('suma-bar')
+    if (tabId === 'order') {
+      sumaBar.classList.remove('hidden')
+    } else {
+      sumaBar.classList.add('hidden')
+    }
+
+    // Re-render active tab
+    if (tabId === 'order') renderOrderTab()
+    else if (tabId === 'history') renderHistoryTab()
+    else if (tabId === 'stats') renderStatsTab()
+    else if (tabId === 'config') renderConfigTab()
+    else if (tabId === 'settings') renderSettingsTab()
+  }
+
+  document.getElementById('tab-bar').addEventListener('click', e => {
+    const btn = e.target.closest('[data-tab]')
+    if (btn) switchTab(btn.dataset.tab)
+  })
+
+  // Onboarding
+  function setupOnboarding() {
+    const onboarding = document.getElementById('onboarding')
+    const inp = document.getElementById('onboarding-input')
+    const btn = document.getElementById('onboarding-btn')
+
+    async function submit() {
+      const name = inp.value.trim()
+      if (!name) { inp.focus(); return }
+      state.settings.sellerName = name
+      state.settings.sellerId = genId()
+      try {
+        await storage.saveSettings(state.settings)
+        onboarding.style.display = 'none'
+        renderOrderTab()
+      } catch(e) {
+        // error already shown by trySet, keep onboarding visible
+      }
+    }
+
+    btn.addEventListener('click', submit)
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit() })
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+  }
+
+  function escAttr(str) {
+    return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  }
+
+  /* === Initialization === */
+  async function init() {
+    try {
+      // 1. Load settings with defaults
+      const savedSettings = await storage.getSettings()
+      state.settings = Object.assign({
+        sellerId: null,
+        sellerName: '',
+        lang: 'pl',
+        highContrast: false,
+        sortByPopularity: false,
+        lastSync: null
+      }, savedSettings)
+
+      // 2. Apply lang + high contrast
+      applyTranslations()
+      applyHighContrast()
+
+      // 3. Check sellerId — if missing show onboarding
+      if (!state.settings.sellerId) {
+        setupOnboarding()
+        document.getElementById('onboarding').style.display = 'flex'
+      } else {
+        document.getElementById('onboarding').style.display = 'none'
+      }
+
+      // 4. Load products (or defaults)
+      const savedProducts = await storage.getProducts()
+      if (savedProducts && savedProducts.length > 0) {
+        state.products = savedProducts
+      } else {
+        state.products = DEFAULT_PRODUCTS
+        await storage.saveProducts(state.products)
+      }
+
+      // 5. Load orders
+      state.orders = await storage.getOrders()
+
+      // 6. Render order tab
+      renderOrderTab()
+      document.getElementById('suma-bar').classList.remove('hidden')
+
+      // 7. Start sync interval
+      setInterval(syncNow, 10 * 60 * 1000)
+
+      // 8. Attempt initial sync
+      syncNow()
+    } catch(e) {
+      showToast(t('error_storage'))
+      console.error('Init failed:', e)
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init)
+  </script>
+</body>
+</html>
