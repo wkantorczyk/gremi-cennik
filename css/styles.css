@@ -164,12 +164,12 @@ td { padding: 10px 12px; border-top: 1px solid #f0f0f0; font-size: 14px; }
 #onboarding input { width:100%; padding:14px; border:2px solid #e0e0e0;
                     border-radius:10px; font-size:18px; margin-bottom:16px; }
 #onboarding input:focus { border-color:#f57c00; outline:none; }
-.onboarding-lang { display:flex; gap:12px; margin-top:20px; }
+.onboarding-lang { display:flex; gap:10px; margin-top:16px; }
 .onboarding-lang-btn { flex:1; display:flex; flex-direction:column; align-items:center;
-                       gap:4px; padding:12px 8px; border:2px solid #e0e0e0;
+                       gap:4px; padding:10px 8px; border:2px solid #ccc;
                        border-radius:12px; background:#fff; color:#333;
                        font-size:13px; cursor:pointer; transition:border-color .15s; }
-.onboarding-lang-btn.active { border-color:#f57c00; color:#f57c00; font-weight:700; }
+.onboarding-lang-btn.active { border-color:#1a1a1a; font-weight:700; }
 .lang-flag { font-size:28px; line-height:1; }
 #onboarding button { width:100%; padding:16px; background:#f57c00; color:#fff;
                      border:none; border-radius:10px; font-size:18px;
