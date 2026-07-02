@@ -367,6 +367,10 @@ function renderSettingsTab() {
       <div class="sync-status" id="sync-status-display"></div>
       <button id="btn-sync-now">${t('btn_sync_now')}</button>
     </div>
+    <div class="author-note">
+      Autor: Wojciech Kantorczyk<br>
+      <a href="mailto:wkantorczyk@gmail.com">wkantorczyk@gmail.com</a>
+    </div>
   `
 
   renderSyncStatusUI()
