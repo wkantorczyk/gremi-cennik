@@ -133,7 +133,7 @@ document.getElementById('history-list').addEventListener('click', e => {
           try {
             await storage.deleteOrderFromCloud(orderToDelete.id)
             fetchGlobalStats()
-          } catch(e) { /* non-critical */ }
+          } catch(e) { await storage.addPendingDelete(orderToDelete.id) }
         }
         state.orders = await storage.getOrders()
         renderHistoryTab()
@@ -174,7 +174,7 @@ document.getElementById('history-list').addEventListener('click', e => {
 
 function renderStatsTab() {
   document.getElementById('stat-customers').textContent = state.orders.length
-  const totalRevenue = state.orders.reduce((s, o) => s + o.total, 0)
+  const totalRevenue = state.orders.reduce((s, o) => s + (o.total || 0), 0)
   document.getElementById('stat-revenue').textContent = formatMoney(totalRevenue)
   renderGlobalStatsUI()
 
@@ -186,7 +186,7 @@ function renderStatsTab() {
 
   const productStats = {}
   for (const order of state.orders) {
-    for (const item of order.items) {
+    for (const item of (order.items || [])) {
       if (!productStats[item.productId]) {
         productStats[item.productId] = { name: item.name, qty: 0, revenue: 0 }
       }
@@ -281,6 +281,7 @@ document.getElementById('config-list').addEventListener('click', e => {
         p.price = newPrice
         await storage.saveProducts(state.products)
         renderConfigTab()
+        renderOrderTab()
       }
     })
   })

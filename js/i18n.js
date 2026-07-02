@@ -94,7 +94,7 @@ function t(key, vars) {
 
 function applyTranslations() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    el.textContent = t(el.getAttribute('data-i18n'))
+    if (!el.children.length) el.textContent = t(el.getAttribute('data-i18n'))
   })
   const lang = state.settings.lang || 'pl'
   document.documentElement.lang = lang

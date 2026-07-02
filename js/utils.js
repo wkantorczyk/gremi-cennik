@@ -9,11 +9,15 @@ function pName(p) {
 }
 
 function formatMoney(n) {
-  return n.toFixed(2).replace('.', ',') + ' zł'
+  const num = Number(n)
+  if (!isFinite(num)) return '— zł'
+  return num.toFixed(2).replace('.', ',') + ' zł'
 }
 
 function formatMoneyRaw(n) {
-  return n.toFixed(2).replace('.', ',')
+  const num = Number(n)
+  if (!isFinite(num)) return '—'
+  return num.toFixed(2).replace('.', ',')
 }
 
 function formatTimestamp(ts) {
@@ -41,7 +45,7 @@ function getSortedProducts() {
   if (!state.settings.sortByPopularity) return state.products
   const counts = {}
   for (const order of state.orders) {
-    for (const item of order.items) {
+    for (const item of (order.items || [])) {
       counts[item.productId] = (counts[item.productId] || 0) + item.qty
     }
   }

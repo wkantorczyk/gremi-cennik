@@ -17,7 +17,14 @@ function renderSyncStatusUI() {
     const d = new Date(lastSync)
     timeStr = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0')
   }
-  el.innerHTML = `<span class="sync-icon">${icon}</span><span>${t('label_last_sync')}: ${timeStr}</span>`
+  el.textContent = ''
+  const iconSpan = document.createElement('span')
+  iconSpan.className = 'sync-icon'
+  iconSpan.textContent = icon
+  const textSpan = document.createElement('span')
+  textSpan.textContent = `${t('label_last_sync')}: ${timeStr}`
+  el.appendChild(iconSpan)
+  el.appendChild(textSpan)
 }
 
 async function syncNow() {
@@ -34,16 +41,21 @@ async function syncNow() {
     }
     const products = await storage.getProducts()
     await storage.pushProductsToCloud(products)
+    const pendingDeletes = await storage.getPendingDeletes()
+    for (const id of pendingDeletes) {
+      try { await storage.deleteOrderFromCloud(id); await storage.removePendingDelete(id) }
+      catch(e) { /* retry next cycle */ }
+    }
     state.settings.lastSync = Date.now()
     await storage.saveSettings(state.settings)
     updateSyncStatus('ok')
+    fetchGlobalStats()
   } catch(e) {
     updateSyncStatus('error')
     showToast(t('toast_sync_error'))
   } finally {
     _syncing = false
   }
-  fetchGlobalStats()
 }
 
 async function fetchGlobalStats() {
@@ -56,13 +68,14 @@ async function fetchGlobalStats() {
   renderGlobalStatsUI()
   try {
     const res = await fetchWithTimeout(
-      `${SUPABASE_URL}/rest/v1/orders?select=total`,
+      `${SUPABASE_URL}/rest/v1/orders?select=count(),total.sum()`,
       { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
     )
     if (!res.ok) throw new Error(res.statusText)
     const rows = await res.json()
-    state.globalStats.customers = rows.length
-    state.globalStats.revenue = rows.reduce((s, r) => s + (r.total || 0), 0)
+    const row = rows[0] || {}
+    state.globalStats.customers = Number(row.count) || 0
+    state.globalStats.revenue = Number(row.sum) || 0
     state.globalStats.status = 'ok'
   } catch(e) {
     state.globalStats.status = 'error'
@@ -74,7 +87,7 @@ function renderGlobalStatsUI() {
   const elC = document.getElementById('stat-global-customers')
   const elR = document.getElementById('stat-global-revenue')
   const elN = document.getElementById('stats-global-note')
-  if (!elC) return
+  if (!elC || !elR || !elN) return
   const { customers, revenue, status } = state.globalStats
   if (status === 'ok') {
     elC.textContent = customers

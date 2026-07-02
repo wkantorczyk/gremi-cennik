@@ -8,7 +8,8 @@ function fetchWithTimeout(url, options, ms = 15000) {
 const KEYS = {
   orders: 'gremi_orders',
   catalog: 'gremi_catalog',
-  settings: 'gremi_settings'
+  settings: 'gremi_settings',
+  pendingDeletes: 'gremi_pending_deletes'
 }
 
 function trySet(key, val) {
@@ -63,7 +64,7 @@ const storage = {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
+        'Prefer': 'resolution=ignore-duplicates,return=minimal'
       },
       body: JSON.stringify(orders.map(o => ({
         id: o.id, seller_id: o.sellerId, seller_name: o.sellerName,
@@ -81,6 +82,17 @@ const storage = {
       }
     })
     if (!res.ok) throw new Error(res.statusText)
+  },
+  async getPendingDeletes() {
+    return tryGet(KEYS.pendingDeletes) || []
+  },
+  async addPendingDelete(id) {
+    const pending = await this.getPendingDeletes()
+    if (!pending.includes(id)) trySet(KEYS.pendingDeletes, [...pending, id])
+  },
+  async removePendingDelete(id) {
+    const pending = await this.getPendingDeletes()
+    trySet(KEYS.pendingDeletes, pending.filter(i => i !== id))
   },
   async pushProductsToCloud(products) {
     const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/products`, {
