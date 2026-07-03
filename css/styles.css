@@ -24,7 +24,7 @@ body.offline #tab-content { padding-top: 40px; }
 /* SUMA bar — fixed above tab bar, only shown on Zamówienie tab */
 #suma-bar { position: fixed; bottom: calc(56px + env(safe-area-inset-bottom));
             left: 0; right: 0; height: 56px; z-index: 99;
-            background: linear-gradient(to top right, #1a1a1a 50%, #f57c00 50%); color: #fff;
+            background: linear-gradient(45deg, #1a1a1a 50%, #f57c00 50%); color: #fff;
             display: flex; align-items: center;
             padding: 0 12px; gap: 12px; }
 #suma-bar.hidden { display: none; }
